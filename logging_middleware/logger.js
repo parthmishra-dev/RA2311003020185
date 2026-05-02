@@ -1,17 +1,16 @@
-const axios = require("axios")
-require("dotenv").config()
+const axios = require("axios");
 
-async function Log(stack, level, pkg, message) {
+async function log(stack, level, pkg, message) {
   try {
     await axios.post(process.env.LOG_API, {
       stack: stack,
       level: level,
       package: pkg,
       message: message
-    })
+    });
   } catch (err) {
-    console.log("log failed")
+    console.log("log failed");
   }
 }
 
-module.exports = Log
+module.exports = log;

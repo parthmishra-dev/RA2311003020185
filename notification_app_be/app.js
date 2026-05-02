@@ -1,3 +1,4 @@
+const log = require("../logging_middleware/logger");
 const express = require("express");
 require("dotenv").config();
 
@@ -5,6 +6,8 @@ const app = express();
 
 app.get("/notifications", async (req, res) => {
   try {
+    await log("backend", "info", "route", "notifications api called");
+
     const response = await fetch("http://20.207.122.201/evaluation-service/notifications", {
       headers: {
         Authorization: `Bearer ${process.env.TOKEN}`
@@ -12,7 +15,6 @@ app.get("/notifications", async (req, res) => {
     });
 
     const data = await response.json();
-
     let notifications = data.notifications;
 
     notifications = notifications.map(n => {
@@ -38,7 +40,9 @@ app.get("/notifications", async (req, res) => {
     });
 
   } catch (error) {
-    res.json({
+    await log("backend", "error", "handler", error.message);
+
+    res.status(500).json({
       success: false,
       message: "Error fetching notifications"
     });
