@@ -1,6 +1,7 @@
-const log = require("../logging_middleware/logger");
 const express = require("express");
+const fetch = require("node-fetch");
 require("dotenv").config();
+const log = require("../logging_middleware/logger");
 
 const app = express();
 
@@ -17,17 +18,17 @@ app.get("/notifications", async (req, res) => {
     const data = await response.json();
     let notifications = data.notifications;
 
+    const weight = {
+      Placement: 3,
+      Result: 2,
+      Event: 1
+    };
+
     notifications = notifications.map(n => {
-      let priority = 0;
-
-      if (n.Type === "Placement") priority = 3;
-      else if (n.Type === "Result") priority = 2;
-      else priority = 1;
-
+      const base = weight[n.Type] || 0;
       const timeDiff = new Date() - new Date(n.Timestamp);
-      const recency = Math.max(0, 1000000000 - timeDiff) / 1000000000;
-
-      return { ...n, priority: priority + recency };
+      const recency = Math.max(0, 1 - timeDiff / (1000 * 60 * 60 * 24));
+      return { ...n, priority: base + recency };
     });
 
     notifications.sort((a, b) => b.priority - a.priority);
@@ -41,7 +42,6 @@ app.get("/notifications", async (req, res) => {
 
   } catch (error) {
     await log("backend", "error", "handler", error.message);
-
     res.status(500).json({
       success: false,
       message: "Error fetching notifications"
