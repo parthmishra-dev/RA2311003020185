@@ -1,45 +1,48 @@
-const express = require("express")
-require("dotenv").config()
+const express = require("express");
+require("dotenv").config();
 
-const Log = require("../logging_middleware/logger")
-
-const app = express()
+const app = express();
 
 app.get("/notifications", async (req, res) => {
   try {
-    await Log("backend", "info", "route", "notifications api called")
-
-    const data = [
-      {
-        type: "email",
-        message: "Vehicle maintenance scheduled",
-        timestamp: "2026-05-02 11:00"
-      },
-      {
-        type: "sms",
-        message: "Vehicle ready for pickup",
-        timestamp: "2026-05-02 11:10"
-      },
-      {
-        type: "push",
-        message: "New service request assigned",
-        timestamp: "2026-05-02 11:20"
+    const response = await fetch("http://20.207.122.201/evaluation-service/notifications", {
+      headers: {
+        Authorization: `Bearer ${process.env.TOKEN}`
       }
-    ]
+    });
 
-    res.status(200).json({
+    const data = await response.json();
+
+    let notifications = data.notifications;
+
+    notifications = notifications.map(n => {
+      let priority = 0;
+
+      if (n.Type === "Placement") priority = 3;
+      else if (n.Type === "Result") priority = 2;
+      else priority = 1;
+
+      const timeDiff = new Date() - new Date(n.Timestamp);
+      const recency = Math.max(0, 1000000000 - timeDiff) / 1000000000;
+
+      return { ...n, priority: priority + recency };
+    });
+
+    notifications.sort((a, b) => b.priority - a.priority);
+
+    const top10 = notifications.slice(0, 10);
+
+    res.json({
       success: true,
-      notifications: data
-    })
+      notifications: top10
+    });
 
-  } catch (err) {
-    await Log("backend", "error", "handler", err.message)
-
-    res.status(500).json({
+  } catch (error) {
+    res.json({
       success: false,
-      message: "error occurred"
-    })
+      message: "Error fetching notifications"
+    });
   }
-})
+});
 
-app.listen(process.env.PORT || 4000)
+app.listen(process.env.PORT || 4000);
